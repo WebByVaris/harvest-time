@@ -46,6 +46,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
   const [isTiming, setIsTiming] = useState(false)
   const [startTime, setStartTime] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [formError, setFormError] = useState<string | null>(null)
 
   // Load timer state from localStorage on mount
   useEffect(() => {
@@ -196,7 +197,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
   const handleStartTimer = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedProject || !selectedTask) {
-      setError("Please select a project and task to start the timer")
+      setFormError("Please select a project and task to start the timer")
       return
     }
 
@@ -204,7 +205,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
     setIsTiming(true)
     setStartTime(now)
     setElapsedSeconds(0)
-    setError(null)
+    setFormError(null)
 
     // Persist state
     localStorage.setItem('isTiming', 'true')
@@ -224,7 +225,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
     const hoursToSubmit = finalHours > 0 ? parseFloat(finalHours.toFixed(2)) : 0
 
     if (hoursToSubmit <= 0) {
-      setError("Timer duration too short to submit.")
+      setFormError("Timer duration too short to submit.")
       setStartTime(null)
       setElapsedSeconds(0)
       return
@@ -232,7 +233,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
 
     // Submit
     setSubmitting(true)
-    setError(null)
+    setFormError(null)
 
     try {
       if (!selectedProject || !selectedTask || !date) {
@@ -258,7 +259,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
       setError("Time entry created successfully!")
     } catch (error) {
       console.error("Error creating time entry:", error)
-      setError(error instanceof Error ? error.message : "Failed to create time entry")
+      setFormError(error instanceof Error ? error.message : "Failed to create time entry")
     } finally {
       setSubmitting(false)
     }
@@ -280,18 +281,18 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
 
     // Standard manual submission
     if (!selectedProject || !selectedTask || !date) {
-      setError("Please fill in all required fields")
+      setFormError("Please fill in all required fields")
       return
     }
 
     const decimalHours = convertTimeToDecimal(hours)
     if (decimalHours <= 0) {
-      setError("Please enter a valid time (e.g., 1:30, 0:45, 2.5)")
+      setFormError("Please enter a valid time (e.g., 1:30, 0:45, 2.5)")
       return
     }
 
     setSubmitting(true)
-    setError(null)
+    setFormError(null)
 
     try {
       await onSubmit({
@@ -308,10 +309,11 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
       setSearchTerm("")
       setTaskSearchTerm("")
 
-      setError("Time entry created successfully!")
+      setFormError(null)
+      // Maybe show a success toast? For now just clearing error is fine.
     } catch (error) {
       console.error("Error creating time entry:", error)
-      setError(error instanceof Error ? error.message : "Failed to create time entry")
+      setFormError(error instanceof Error ? error.message : "Failed to create time entry")
     } finally {
       setSubmitting(false)
     }
@@ -460,6 +462,12 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
             </div>
           </div>
         </form>
+        {formError && (
+          <div className="mt-6 max-w-[150px] text-center text-red-500 text-sm font-medium animate-bounce bg-red-100 p-2 rounded relative">
+            <div className="absolute top-[-6px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-red-100"></div>
+            {formError}
+          </div>
+        )}
       </div>
     </LocalizationProvider>
   )
