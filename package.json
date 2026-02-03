@@ -20,6 +20,7 @@
     "@mui/x-date-pickers": "^8.11.1",
     "@sitecore-marketplace-sdk/client": "^0.2.0",
     "@sitecore-marketplace-sdk/xmc": "^0.2.0",
+    "date-fns": "^4.1.0",
     "framer-motion": "^12.23.24",
     "next": "15.5.2",
     "react": "19.1.0",

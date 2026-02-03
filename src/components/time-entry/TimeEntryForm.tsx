@@ -43,6 +43,47 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const [isTiming, setIsTiming] = useState(false)
+  const [startTime, setStartTime] = useState<number | null>(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
+  // Load timer state from localStorage on mount
+  useEffect(() => {
+    const storedIsTiming = localStorage.getItem('isTiming') === 'true'
+    const storedStartTime = localStorage.getItem('startTime')
+
+    if (storedIsTiming && storedStartTime) {
+      setIsTiming(true)
+      setStartTime(parseInt(storedStartTime))
+      // Calculate elapsed time immediately to avoid 00:00 flash
+      const start = parseInt(storedStartTime)
+      const now = Date.now()
+      setElapsedSeconds(Math.floor((now - start) / 1000))
+    }
+  }, [])
+
+  // Timer interval
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+
+    if (isTiming && startTime) {
+      interval = setInterval(() => {
+        const now = Date.now()
+        setElapsedSeconds(Math.floor((now - startTime) / 1000))
+      }, 1000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isTiming, startTime])
+
+  const formatElapsedTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
 
   useEffect(() => {
     if (projects.length > 0) {
@@ -72,14 +113,14 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
       }
 
       const assignmentsData = await assignmentsRes.json()
-      
+
       const projectMap = new Map<number, Project>()
       assignmentsData.forEach((assignment: ProjectAssignment) => {
         if (!assignment.project || !assignment.task_assignments) {
           console.warn('Invalid assignment data:', assignment)
           return
         }
-        
+
         const projectId = assignment.project.id
         if (!projectMap.has(projectId)) {
           projectMap.set(projectId, {
@@ -90,7 +131,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
           })
         }
         const project = projectMap.get(projectId)!
-        
+
         assignment.task_assignments.forEach((taskAssignment) => {
           if (taskAssignment.task) {
             project.tasks.push({
@@ -101,7 +142,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
           }
         })
       })
-      
+
       const projectsArray = Array.from(projectMap.values()).sort((a, b) => {
         if (a.clientName === b.clientName) {
           return a.name.localeCompare(b.name)
@@ -141,21 +182,104 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
     if (!timeStr.includes(':')) {
       return parseFloat(timeStr) || 0
     }
-    
+
     const parts = timeStr.split(':')
     if (parts.length === 2) {
       const hours = parseInt(parts[0]) || 0
       const minutes = parseInt(parts[1]) || 0
       return hours + (minutes / 60)
     }
-    
+
     return 0
+  }
+
+  const handleStartTimer = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedProject || !selectedTask) {
+      setError("Please select a project and task to start the timer")
+      return
+    }
+
+    const now = Date.now()
+    setIsTiming(true)
+    setStartTime(now)
+    setElapsedSeconds(0)
+    setError(null)
+
+    // Persist state
+    localStorage.setItem('isTiming', 'true')
+    localStorage.setItem('startTime', now.toString())
+  }
+
+  const handleStopTimer = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsTiming(false)
+    localStorage.removeItem('isTiming')
+    localStorage.removeItem('startTime')
+
+    // Calculate final hours
+    const finalHours = elapsedSeconds / 3600
+    // Ensure at least some time is logged, maybe logic for minimum time? 
+    // For now, let's just use the exact decimal or a minimum of 0.01 if it's very short.
+    const hoursToSubmit = finalHours > 0 ? parseFloat(finalHours.toFixed(2)) : 0
+
+    if (hoursToSubmit <= 0) {
+      setError("Timer duration too short to submit.")
+      setStartTime(null)
+      setElapsedSeconds(0)
+      return
+    }
+
+    // Submit
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      if (!selectedProject || !selectedTask || !date) {
+        throw new Error("Missing required fields")
+      }
+
+      await onSubmit({
+        project_id: selectedProject.id,
+        task_id: selectedTask.id,
+        hours: hoursToSubmit,
+        spent_date: date.toISOString().split('T')[0],
+        notes: message
+      })
+
+      setHours("")
+      setDate(new Date())
+      setMessage("")
+      setSearchTerm("")
+      setTaskSearchTerm("")
+      setStartTime(null)
+      setElapsedSeconds(0)
+
+      setError("Time entry created successfully!")
+    } catch (error) {
+      console.error("Error creating time entry:", error)
+      setError(error instanceof Error ? error.message : "Failed to create time entry")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!selectedProject || !selectedTask || !hours || !date) {
+
+    if (isTiming) {
+      handleStopTimer(e)
+      return
+    }
+
+    // If no hours entered, start the timer
+    if (!hours || hours.trim() === '') {
+      handleStartTimer(e)
+      return
+    }
+
+    // Standard manual submission
+    if (!selectedProject || !selectedTask || !date) {
       setError("Please fill in all required fields")
       return
     }
@@ -183,7 +307,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
       setMessage("")
       setSearchTerm("")
       setTaskSearchTerm("")
-      
+
       setError("Time entry created successfully!")
     } catch (error) {
       console.error("Error creating time entry:", error)
@@ -222,8 +346,8 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
       <div className="flex flex-col items-center justify-center h-screen">
         <h1 className="text-2xl font-bold mb-4 text-red-600">Error</h1>
         <p className="mb-4">{error}</p>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
         >
           Retry
@@ -232,80 +356,111 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
     )
   }
 
+  const getButtonConfig = () => {
+    if (isTiming) {
+      return {
+        text: submitting ? "Saving..." : "Stop Timer",
+        className: "bg-red-600 hover:bg-red-700 animate-pulse text-white"
+      }
+    }
+    if (hours && hours.trim().length > 0) {
+      return {
+        text: submitting ? "Saving..." : "Save Time Entry",
+        className: "bg-[#6e3fff] hover:bg-[#5319e0] text-white"
+      }
+    }
+    return {
+      text: "Start Timer",
+      className: "bg-green-600 hover:bg-green-700 text-white"
+    }
+  }
+
+  const buttonConfig = getButtonConfig()
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <div className="mb-8 png-time-entry">
         <form onSubmit={handleSubmit} className="space-y-4">
-        <ProjectSelector
-          projects={projects}
-          selectedProject={selectedProject}
-          searchTerm={searchTerm}
-          onProjectChange={handleProjectChange}
-          onSearchChange={setSearchTerm}
-        />
+          <ProjectSelector
+            projects={projects}
+            selectedProject={selectedProject}
+            searchTerm={searchTerm}
+            onProjectChange={handleProjectChange}
+            onSearchChange={setSearchTerm}
+          />
 
-        <TaskSelector
-          tasks={selectedProject?.tasks || []}
-          selectedTask={selectedTask}
-          searchTerm={taskSearchTerm}
-          onTaskChange={handleTaskChange}
-          onSearchChange={setTaskSearchTerm}
-          disabled={!selectedProject}
-        />
+          <TaskSelector
+            tasks={selectedProject?.tasks || []}
+            selectedTask={selectedTask}
+            searchTerm={taskSearchTerm}
+            onTaskChange={handleTaskChange}
+            onSearchChange={setTaskSearchTerm}
+            disabled={!selectedProject}
+          />
 
-        <div>
+          <div>
             <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="w-full p-2 border rounded text-black"
-                rows={3}
-                placeholder="Optional notes about this time entry"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="w-full p-2 border rounded text-black"
+              rows={3}
+              placeholder="Optional notes about this time entry"
             />
-        </div>
+          </div>
 
-        <div className="flex flex-row gap-4">
-            <div>
-                <label className="hidden text-sm font-medium mb-2">Hours *</label>
+          <div className="flex flex-row gap-4 items-end">
+            <div className="flex-1">
+              <label className="hidden text-sm font-medium mb-2">Hours *</label>
+              {isTiming ? (
+                <div className="w-full p-2 border rounded text-black bg-gray-100 font-mono text-center text-lg flex items-center justify-center h-[42px]">
+                  {formatElapsedTime(elapsedSeconds)}
+                </div>
+              ) : (
                 <input
-                    type="text"
-                    value={hours}
-                    onChange={(e) => setHours(e.target.value)}
-                    className="w-full p-2 border rounded text-black time-input"
-                    placeholder="0:00"
-                    required
+                  type="text"
+                  value={hours}
+                  onChange={(e) => setHours(e.target.value)}
+                  className="w-full p-2 border rounded text-black time-input"
+                  placeholder="0:00"
+                  disabled={isTiming}
                 />
+              )}
             </div>
 
-            <div>
-                <label className="hidden text-sm font-medium mb-2">Date *</label>
-                <DatePicker
-                    value={date}
-                    onChange={(newValue) => setDate(newValue)}
-                    format="d MMM yy'"
-                    slots={{
-                        openPickerIcon: CustomCalendarIcon,
-                    }}
-                    slotProps={{
-                        textField: {
-                            fullWidth: true,
-                            size: 'small',
-                        },
-                        actionBar: {
-                            actions: ['today', 'cancel']
-                        }
-                    }}
-                />
+            <div className="flex-1">
+              <label className="hidden text-sm font-medium mb-2">Date *</label>
+              <DatePicker
+                value={date}
+                onChange={(newValue) => setDate(newValue)}
+                format="d MMM yy'"
+                slots={{
+                  openPickerIcon: CustomCalendarIcon,
+                }}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: 'small',
+                  },
+                  actionBar: {
+                    actions: ['today', 'cancel']
+                  }
+                }}
+                disabled={isTiming}
+              />
             </div>
-            <button
+
+            <div className="flex-1">
+              <button
                 type="submit"
-                disabled={submitting}
-                className="w-full bg-[#6e3fff] hover:bg-[#5319e0] text-white font-bold px-4 py-2 rounded disabled:opacity-50 cursor-pointer"
-                >
-                {submitting ? "Saving..." : "Save Time Entry"}
-            </button>
-        </div>
-      </form>
-    </div>
+                disabled={submitting || (buttonConfig.text === "Start Timer" && (!selectedProject || !selectedTask))}
+                className={`w-full font-bold px-4 py-2 rounded disabled:opacity-50 cursor-pointer ${buttonConfig.className}`}
+              >
+                {buttonConfig.text}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
     </LocalizationProvider>
   )
 }
