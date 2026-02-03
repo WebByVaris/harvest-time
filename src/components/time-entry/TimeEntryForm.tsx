@@ -414,7 +414,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
             <div className="flex-1">
               <label className="hidden text-sm font-medium mb-2">Hours *</label>
               {isTiming ? (
-                <div className="w-full p-2 border rounded text-black bg-gray-100 font-mono text-center text-lg flex items-center justify-center h-[42px]">
+                <div className="w-full p-2 border rounded text-black bg-white text-center flex items-center justify-center h-[66px] time-input">
                   {formatElapsedTime(elapsedSeconds)}
                 </div>
               ) : (
@@ -429,7 +429,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
               )}
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1 max-w-fit">
               <label className="hidden text-sm font-medium mb-2">Date *</label>
               <DatePicker
                 value={date}
@@ -455,7 +455,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
               <button
                 type="submit"
                 disabled={submitting || (buttonConfig.text === "Start Timer" && (!selectedProject || !selectedTask))}
-                className={`w-full font-bold px-4 py-2 rounded disabled:opacity-50 cursor-pointer ${buttonConfig.className}`}
+                className={`w-full h-[66px] font-bold px-4 py-2 rounded disabled:opacity-50 cursor-pointer ${buttonConfig.className}`}
               >
                 {buttonConfig.text}
               </button>
@@ -463,7 +463,7 @@ export default function TimeEntryForm({ onSubmit }: TimeEntryFormProps) {
           </div>
         </form>
         {formError && (
-          <div className="mt-6 max-w-[150px] text-center text-red-500 text-sm font-medium animate-bounce bg-red-100 p-2 rounded relative">
+          <div className="mt-2 max-w-[172px] text-center text-red-500 text-sm font-medium bg-red-100 p-2 rounded absolute">
             <div className="absolute top-[-6px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-red-100"></div>
             {formError}
           </div>
