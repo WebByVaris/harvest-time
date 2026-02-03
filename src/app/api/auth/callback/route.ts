@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
   const redirectResponse = NextResponse.redirect(new URL("/auth/auth-success", request.url))
   redirectResponse.cookies.set("harvest_token", data.access_token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true, // Required for SameSite=None, works on localhost
+    sameSite: "none",
     path: "/",
   })
 
