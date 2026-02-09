@@ -23,10 +23,10 @@ export default function LoginPage() {
   const handleAuthorize = () => {
     try {
       setIsAuthorizing(true)
-      const popup = window.open("/api/auth/login", "harvest_oauth", 
+      const popup = window.open("/api/auth/login", "harvest_oauth",
         "width=500,height=600,scrollbars=yes,resizable=yes,location=yes"
       )
-      
+
       if (popup) {
         const checkClosed = setInterval(() => {
           if (popup.closed) {
@@ -55,16 +55,15 @@ export default function LoginPage() {
 
   return (
     <>
-    
-    <FloatingMenu />
-    <div className="flex flex-col items-center justify-center h-screen">
-        <h1 className="text-2xl font-bold mb-4">You need to sign in!</h1>
+
+      <FloatingMenu />
+      <div className="flex flex-col items-center justify-center h-screen">
+        <h1 className="text-2xl font-bold mb-4">Welcome to Time Tracker</h1>
         <p className="mb-4 text-center">
-            You need to be signed into a Harvest account!<br /> 
-            Please, sign in or sign up:
+          You need to be signed into a Harvest account!
         </p>
         <button onClick={handleAuthorize} className="hover:cursor-pointer bg-[#6e3fff] hover:bg-[#5319e0] px-4 py-2 rounded-full text-white font-medium">Sign In</button>
-    </div>
+      </div>
     </>
   )
 }
