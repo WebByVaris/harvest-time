@@ -15,7 +15,7 @@ import { mdiDotsHorizontal, mdiHelpCircleOutline, mdiInformationOutline } from '
 export default function FloatingMenu() {
   const currentYear = new Date().getFullYear();
 
-  return (    
+  return (
     <Box
       position="fixed"
       top={0}
@@ -41,19 +41,19 @@ export default function FloatingMenu() {
           _active={{ bg: "rgba(255, 255, 255, 0.2)" }}
           minHeight="18px"
           height="18px"
-          width="20px"            
+          width="20px"
           fontSize="12px"
           className="menu-dots-button"
           fontWeight="bold"
         >
-        <Icon path={mdiDotsHorizontal} size={1} />
+          <Icon path={mdiDotsHorizontal} size={1} />
         </MenuButton>
         <MenuList fontSize="sm" minWidth="160px" textAlign="left" p={0}>
           {/* Menu Items */}
           <Box>
-            <MenuItem 
+            <MenuItem
               as={Link}
-              href="https://www.ping-works.com.au/services/sitecore-xm-cloud-plugins/to-do"
+              href="https://www.ping-works.com.au/services/sitecore-xm-cloud-plugins/harvest-time-tracker"
               target="_blank"
               rel="noopener noreferrer"
               justifyContent="flex-start"
@@ -63,7 +63,7 @@ export default function FloatingMenu() {
             >
               Help
             </MenuItem>
-            <MenuItem 
+            <MenuItem
               as={Link}
               href="https://www.ping-works.com.au/services/sitecore-xm-cloud-plugins"
               target="_blank"
